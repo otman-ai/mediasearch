@@ -8,12 +8,10 @@ import cv2
 
 from ultralytics import YOLO
 import urllib
-import hashlib
 from tqdm import tqdm
-import warnings
 
 default = os.path.join(os.path.expanduser("~"), ".cache")
-download_root = os.path.join(os.getenv("XDG_CACHE_HOME", default), "media_search")
+download_root = os.path.join(os.getenv("XDG_CACHE_HOME", default), "mediasearch")
 
 
 

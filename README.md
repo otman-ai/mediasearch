@@ -41,7 +41,7 @@ Check [Whisper Officiel documentations](https://github.com/openai/whisper) if yo
 * To get parts of the video that coorespond to your query 
 
 ```python
-from media_search.media import VideoText
+from mediasearch.media import VideoText
 
 video_search = VideoText(video_path="path/to/video")
 results = video_search.search("the query is here")
@@ -53,7 +53,7 @@ print("Results:", results)
 * To see how an image is correlated to your query
 
 ```python
-from media_search.media import TextImage
+from mediasearch.media import TextImage
 
 image_sm = TextImage()
 
@@ -66,7 +66,7 @@ print(res)
 * To remove unwanted words and script from the video 
 
 ```python
-from media_search.edit import CensorText
+from mediasearch.edit import CensorText
 import whisper
 
 model = whisper.load_model("small")
@@ -83,7 +83,7 @@ censor_text.keep(transcript)
 * You can remove, extract audio and cut video 
 
 ```python
-from media_search.edit import cut_video, extract_audio, remove_audio, remove_intervals
+from mediasearch.edit import cut_video, extract_audio, remove_audio, remove_intervals
 
 # cut video
 cut_video("video.mp4", "cutted_output.mp4", start_time=0, duration=12)
@@ -103,7 +103,7 @@ remove_intervals(video_path, remove_intervals, video_duration, output_path)
 
 For a video:
 ```python
-from media_search.edit import CensorObjectS
+from mediasearch.edit import CensorObjectS
 
 censor_objet = CensorObjectS(labels=["faces"])
 censor_objet.censor_video("video.mp4", "output_blurred.mp4")
@@ -113,7 +113,7 @@ censor_objet.censor_video("video.mp4", "output_blurred.mp4")
 
 For an image
 ```python
-from media_search.edit import CensorObjectS
+from mediasearch.edit import CensorObjectS
 
 censor_objet = CensorObjectS(labels=["face"])
 censor_objet.censor_image("image.png", "output_blurred_img.png")
