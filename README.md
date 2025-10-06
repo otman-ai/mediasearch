@@ -1,5 +1,5 @@
 # Media Search
-Cambines state of art models such as transcribing, ViT for video editing , object detection and understinding all in one without importing differents packages.
+AI-powered media search and editing toolkit.
 
 ## Features
 - Get sub-clips that coorespond to your query without transcribing the entire video
@@ -32,7 +32,7 @@ scoop install ffmpeg
 Install python packages:
 
 ```bash
-pip install -r requirements.txt
+pip install git+http://github.com/otman-ai/mediasearch.git
 ```
 Check [Whisper Officiel documentations](https://github.com/openai/whisper) if you have any issues installing it.
 
@@ -41,7 +41,7 @@ Check [Whisper Officiel documentations](https://github.com/openai/whisper) if yo
 * To get parts of the video that coorespond to your query 
 
 ```python
-from mediasearch.media import VideoText
+from mediasearch.vit import VideoText
 
 video_search = VideoText(video_path="path/to/video")
 results = video_search.search("the query is here")
@@ -53,7 +53,7 @@ print("Results:", results)
 * To see how an image is correlated to your query
 
 ```python
-from mediasearch.media import TextImage
+from mediasearch.vit import TextImage
 
 image_sm = TextImage()
 
@@ -120,3 +120,19 @@ censor_objet.censor_image("image.png", "output_blurred_img.png")
 
 # output -> image with blurred faces.
 ```
+
+### CLI
+
+You can also run the following command to use `mediasearch` from your console:
+```bash
+# Search video content
+mediasearch search video.mp4 "person walking" --threshold 0.05
+
+# Check image similarity
+mediasearch image-similarity image.jpg "cat sitting"
+
+# Censor objects
+mediasearch censor video.mp4 output.mp4 --labels faces license_plates
+```
+## License
+[License](/LICENSE)

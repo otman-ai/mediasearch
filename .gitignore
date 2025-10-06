@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+testvenv/
 # Distribution / packaging
 .Python
 build/
