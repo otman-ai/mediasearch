@@ -32,8 +32,9 @@ scoop install ffmpeg
 Install python packages:
 
 ```bash
-pip install git+http://github.com/otman-ai/mediasearch.git
+pip install git+https://github.com/otman-ai/mediasearch.git@main
 ```
+
 Check [Whisper Officiel documentations](https://github.com/openai/whisper) if you have any issues installing it.
 
 ## How to use
@@ -103,9 +104,9 @@ remove_intervals(video_path, remove_intervals, video_duration, output_path)
 
 For a video:
 ```python
-from mediasearch.edit import CensorObjectS
+from mediasearch.edit import CensorObjects
 
-censor_objet = CensorObjectS(labels=["faces"])
+censor_objet = CensorObjects(labels=["faces"])
 censor_objet.censor_video("video.mp4", "output_blurred.mp4")
 
 # output -> video with blurred faces.
