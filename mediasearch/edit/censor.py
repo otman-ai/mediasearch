@@ -103,7 +103,7 @@ class CensorText:
         """
         Mapped the subtitles, each word with it correspond start and end time
         """
-        # Empty dictionairy to store the subtitles with it's own start and end time
+        # Empty dictionary to store the subtitles with it's own start and end time
         # looping for every segments
         for segment in self.segments["segments"]:
             for word in segment["words"]:
@@ -149,9 +149,7 @@ class CensorText:
             else:
                 self.merged.append((start, end))
 
-
-
-class CensorObjectS:
+class CensorObjects:
     """Censor video and blure objects"""
     def __init__(self, labels:list=['faces'], show=False):
         self.labels = labels
@@ -190,7 +188,7 @@ class CensorObjectS:
                 break
 
             for _, m in self.models.items():
-                results = m(frame)
+                results = m(frame, verbose=False)
                 for r in results:
                     if getattr(r, "boxes"):
                         for box in r.boxes:
@@ -230,7 +228,7 @@ class CensorObjectS:
         if img is None:
             raise Exception("The image is None and not supported")
         for l, m in self.models.items():
-            results = m(img)
+            results = m(img, verbose=False)
             for r in results:
                 for box in r.boxes:
                     x, y, w, h = map(int, box.xyxy[0])

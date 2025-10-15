@@ -2,10 +2,10 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
+assets/video.mp4
 # C extensions
 *.so
-
+testvenv/
 # Distribution / packaging
 .Python
 build/
@@ -74,10 +74,12 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
-
+assets/censored_transcript.mp4
 # Jupyter Notebook
 .ipynb_checkpoints
-
+.idea/
+app.py
+notebook.ipynb
 # IPython
 profile_default/
 ipython_config.py

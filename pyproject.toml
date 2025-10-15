@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediasearch"
+dynamic = ["version"]
+description = "AI-powered media search and editing toolkit"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Otman Heddouch", email = "otmanheddouchai@gmail.com"},
+]
+maintainers = [
+    {name = "Otman Heddouch", email = "otmanheddouchai@gmail.com"},
+]
+keywords = ["ai", "video", "search", "editing", "computer-vision", "clip", "whisper"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch==2.8.0",
+    "opencv-python==4.12.0.88",
+    "numpy==2.2.6",
+    "pillow==11.3.0",
+    "ffmpeg-python==0.2.0",
+    "tqdm==4.67.1",
+    "ultralytics==8.3.204",
+    "clip @ git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1",
+    "openai-whisper @ git+https://github.com/openai/whisper.git@c0d2f624c09dc18e709e37c2ad90c039a4eb72a2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+]
+
+[project.urls]
+Homepage = "https://github.com/otman-ai/mediasearch"
+Repository = "https://github.com/otman-ai/mediasearch"
+Issues = "https://github.com/otman-ai/mediasearch/issues"
+
+[project.scripts]
+mediasearch = "mediasearch.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "mediasearch.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["mediasearch*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
