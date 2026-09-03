@@ -3,6 +3,8 @@ __pycache__/
 *.py[codz]
 *$py.class
 assets/video.mp4
+demo.py
+videos/
 # C extensions
 *.so
 testvenv/
