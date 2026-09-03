@@ -9,6 +9,10 @@ import cv2
 import logging
 import h5py
 import os
+import queue
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 from tqdm import tqdm
 logging.basicConfig(
     level=logging.INFO,
@@ -47,14 +51,24 @@ class VideoQuery:
                  frame_rate:int=10,
                  threshold:float=0.25,
                  cash=video_embeddings_path,
+                 batch_size: int = 32,
+                 num_workers: int | None = None,
                  debug:bool=False):
+        
+        self.batch_size = batch_size
+        self.device =  "cuda" if torch.cuda.is_available() else "cpu"   
+        if self.device == "cuda":
+            self.num_workers = num_workers or min(8, os.cpu_count() or 4)
+        else:
+            self.num_workers = num_workers or 2
+        cv2.setNumThreads(self.num_workers)
+        torch.set_num_threads(os.cpu_count())
         self.model_name = model_name
         self.threshold = threshold
         self.frame_rate = frame_rate
         self.debug = debug
         self.logger = logger
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
-        self.device =  "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load(self.model_name, device=self.device)
         self.logits = []
         self.probs = None
@@ -65,6 +79,41 @@ class VideoQuery:
     def __call__(self, *args, **kwds):
         return self.search( *args, **kwds)
 
+    def _preprocess_frame(self, frame):
+        img = Image.fromarray(frame).convert("RGB")
+        return self.preprocess(img)
+    
+    def _encode_batch(self, frames, pool):
+        tensors = list(pool.map(self._preprocess_frame, frames))
+        batch = torch.stack(tensors).to(self.device)
+        with torch.no_grad():
+            img_features = self.model.encode_image(batch)
+            img_features /= img_features.norm(dim=-1, keepdim=True)
+        return img_features.cpu()
+    
+    def _embed_video(self, video:str) -> torch.Tensor:
+
+        cap = cv2.VideoCapture(video)
+        embeddings, batch, fc = [], [], 0
+
+        with ThreadPoolExecutor(max_workers=self.num_workers) as pool:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if fc % self.frame_rate == 0:
+                    batch.append(frame)
+                fc += 1
+                if len(batch) == self.batch_size:
+                    img_features = self._encode_batch(batch, pool)
+                    embeddings.append(img_features)
+                    batch = []
+            if batch:
+                img_features = self._encode_batch(batch, pool)
+                embeddings.append(img_features)
+        cap.release()
+        return torch.cat(embeddings) if embeddings else torch.empty(0)
+    
     def insert_videos(self, videos_path:List=[]):
         logging.info(f"Inserting {videos_path} videos")
         with h5py.File(self.cash, "a") as f:
@@ -75,41 +124,22 @@ class VideoQuery:
                 cap = cv2.VideoCapture(video)
                 fps = cap.get(cv2.CAP_PROP_FPS)
                 videoDuration =float(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) /fps)
+                cap.release()
+
                 self.logger.debug("Video duration is %s", videoDuration)
                 grp = f.create_group(str(idx))
                 grp.create_dataset("video", data=[video])
                 grp.create_dataset("fps", data=[fps])
                 grp.create_dataset("rate_second", data=[self.frame_rate / fps])
                 grp.create_dataset("duration", data=[videoDuration])
-                frame_count = 0
-                frame_index = 0
                 logging.info(f"Start reading the video from {video}")
-                video_embeddings = []
-                while True:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
+                # pipeline
+                video_embeddings = self._embed_video(video)
 
-                    if frame_count % self.frame_rate == 0:
-                        img = Image.fromarray(frame).convert("RGB")
-                        img_feature = self.preprocess(img).unsqueeze(0)
-                        self.logger.debug("Image feature shape before encoding: %s", img_feature.shape)
-                        with torch.no_grad():
-                            img_feature = self.model.encode_image(img_feature)
-                            self.logger.debug("Image feature shape after encoding: %s", img_feature.shape)
-                            img_feature /= img_feature.norm(dim=-1, keepdim=True)
-                            self.logger.debug("Image feature shape after normalization: %s", img_feature.shape)
-                        # save the img features as npy
-                        #self.video_embeddings[idx]["embeddings"][frame_index] = img_feature.tolist()
-                        video_embeddings.append(img_feature.tolist())
-                        frame_index += 1
-                    frame_count += 1
                 logging.info(f"Finished reading the video from {video}")
                 cap.release()
-                self.logger.debug("Video embeddings shape: %s", np.array(video_embeddings).shape)
-                grp.create_dataset("embeddings", data=np.array(video_embeddings, dtype=np.float32))
-            #with open(self.cash, "w") as f:
-            #    json.dump(self.video_embeddings, f)
+                grp.create_dataset("embeddings", data=np.asarray(video_embeddings.cpu(), dtype=np.float32), compression="lzf")
+
             logging.info(f"The embeddings saved to {self.cash}")
 
     def search(self, query: str) -> dict | None:
@@ -129,7 +159,7 @@ class VideoQuery:
             for key in f.keys():
                 self.logger.debug("Key: %s", f[key].keys())
                 # get all the embeddings of the video
-                embeddings = np.array(f[key]["embeddings"][:]).squeeze(1)
+                embeddings = f[key]["embeddings"][:]
                 self.logger.debug("Embedding shape: %s", embeddings.shape)
                 rate_second = f[key]["rate_second"][:][0]
                 # loop through each embedded frame
@@ -144,7 +174,7 @@ class VideoQuery:
         kept = [h for h in all_hits
                 if h[2] >= self.threshold and h[2] >= max_sim - 0.03]
         for k in kept:
-            timestamps_extracted[k[0]] = timestamps_extracted.get(k[0], []) + [(float(k[1] * k[3]), min(float(k[1] * k[3] + k[3]), float(k[4])))]
+            timestamps_extracted[k[0]] = timestamps_extracted.get(k[0], []) + [(float(k[1] * k[3]), min(float(k[1] * k[3] + k[3]), float(k[4])), k[2])]
 
         return timestamps_extracted
     
@@ -175,14 +205,14 @@ class ImageQuery:
                 img = Image.open(image).convert("RGB")
                 img_features = self.preprocess(img).unsqueeze(0)
                 with torch.no_grad():
-                    img_features = self.model.encode_image(img_features)
+                    img_features = self.model.encode_image(img_features.to(self.device))
                     self.logger.debug("Image feature shape after encoding: %s", img_features.shape)
                     img_features /= img_features.norm(dim=-1, keepdim=True)
                     self.logger.debug("Image feature shape after normalization: %s", img_features.shape)
                 self.logger.debug(f"Embeddings: {img_features.shape}")
                 grp = f.create_group(str(idx))
                 grp.create_dataset("image", data=[image])
-                grp.create_dataset("embeddings", data=np.asarray(img_features, dtype=np.float32))
+                grp.create_dataset("embeddings", data=np.asarray(img_features.cpu(), dtype=np.float32), compression="lzf")
                 self.logger.debug(f"The embeddings for image {image} saved")
         self.logger.info(f"The embeddings saved to {self.cash}")
 
@@ -201,7 +231,7 @@ class ImageQuery:
                 for key in f.keys():
                     img = f[key]["image"][0].decode('utf-8')
                     self.logger.info(f"Search the image: {img}")
-                    embeddings = np.array(f[key]["embeddings"][:])
+                    embeddings = f[key]["embeddings"][:]
                     self.logger.debug("Embedding shape: %s", embeddings.shape)
                     self.logger.debug("Encoded query shape: %s", encoded_query.shape)
                     sims = (encoded_query.detach().cpu().numpy() @ embeddings.T).ravel()[0]

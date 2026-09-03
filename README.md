@@ -144,3 +144,10 @@ mediasearch censor video.mp4 censored_transcript.mp4 --labels faces license_plat
 ```
 ## License
 [License](/LICENSE)
+
+
+## Next
+- [X] Return the confident score & Sort the results from highest to lowest
+- [X] Optimize the embedding & search latency
+- [ ] Test JEPA variations
+- [X] Add Cuda compatibility
