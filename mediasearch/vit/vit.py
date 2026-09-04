@@ -174,7 +174,7 @@ class VideoQuery:
             encoded_query /= encoded_query.norm(dim=-1, keepdim=True)
 
         self.logger.debug("Encoded query shape: %s", all_embds.dtype)
-        with torch.autocast(device_type=self.device, dtype=torch.float32):
+        with torch.autocast(device_type=self.device, dtype=torch.float16):
             sims = (all_embds @ encoded_query.T).cpu().numpy().ravel()
         self.logger.debug("Sims shape: %s", sims.shape)
         max_sim = sims.max()
