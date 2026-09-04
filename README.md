@@ -148,6 +148,7 @@ mediasearch censor video.mp4 censored_transcript.mp4 --labels faces license_plat
 
 ## Next
 - [X] Return the confident score & Sort the results from highest to lowest
-- [X] Optimize the embedding & search latency
+- [X] Optimize the embedding
+- [ ] Optimize Search latency
 - [ ] Test JEPA variations
 - [X] Add Cuda compatibility

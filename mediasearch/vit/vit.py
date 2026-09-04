@@ -150,33 +150,47 @@ class VideoQuery:
         with torch.no_grad():
             encoded_query  = self.model.encode_text(query_tokenized)
             encoded_query /= encoded_query.norm(dim=-1, keepdim=True)
+            encoded_query = encoded_query.cpu().numpy().T
         self.logger.debug("Encoded query shape: %s", encoded_query.shape)
         if not os.path.exists(self.cash) and os.path.getsize(self.cash) == 0:
             self.logger.warning("The embeddings file is empty. Please insert videos first.")
             return
         all_hits = []
         with h5py.File(self.cash, "r") as f:
-            for key in f.keys():
-                self.logger.debug("Key: %s", f[key].keys())
+            keys = list(f.keys())
+            embds, meta = [], []
+            if not keys:
+                self.logger.warning("The embeddings file is empty. Please insert videos first.")
+                return
+            for key in keys:
                 # get all the embeddings of the video
-                embeddings = f[key]["embeddings"][:]
-                self.logger.debug("Embedding shape: %s", embeddings.shape)
+                e = f[key]["embeddings"][:]
                 rate_second = f[key]["rate_second"][:][0]
                 # loop through each embedded frame
-                sims = (encoded_query.detach().cpu().numpy() @ embeddings.T).ravel()
-                self.logger.debug("Sims %s", sims)
                 video = f[key]["video"][0].decode('utf-8')
                 duration = f[key]["duration"][:][0]
-                for i, s in enumerate(sims):
-                    all_hits.append((video, i, float(s), float(rate_second), duration))
+                meta.append((video, rate_second, duration, len(e)))
+                embds.append(e)
 
-        max_sim = max(h[2] for h in all_hits)
-        kept = [h for h in all_hits
-                if h[2] >= self.threshold and h[2] >= max_sim - 0.03]
-        for k in kept:
-            timestamps_extracted[k[0]] = timestamps_extracted.get(k[0], []) + [(float(k[1] * k[3]), min(float(k[1] * k[3] + k[3]), float(k[4])), k[2])]
-
-        return timestamps_extracted
+                # for i, s in enumerate(sims):
+                #     all_hits.append((video, i, float(s), float(rate_second), duration))
+        all_embds = np.concatenate(embds, axis=0)
+        sims = all_embds @ encoded_query
+        self.logger.debug("Sims shape: %s", sims.shape)
+        max_sim = sims.max()
+        keep = (sims >=  self.threshold) & (sims >= max_sim - 0.03)
+        out, offset = {}, 0
+        for video, rate, duration, n in meta:
+            idx = np.nonzero(keep[offset:offset + n])[0]   # only kept frames
+            if idx.size:
+                starts = idx * rate
+                ends = np.minimum(starts + rate, duration)
+                scores = sims[offset:offset + n][idx]
+                out.setdefault(video, []).extend(
+                    (float(a), float(b), float(c))
+                    for a, b, c in zip(starts, ends, scores))
+            offset += n
+        return out
     
 
 class ImageQuery:
