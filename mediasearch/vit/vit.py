@@ -166,18 +166,16 @@ class VideoQuery:
 
                 # for i, s in enumerate(sims):
                 #     all_hits.append((video, i, float(s), float(rate_second), duration))
-        all_embds = torch.from_numpy(np.concatenate(embds, axis=0))
-        if self.device  == "cuda":
-            all_embds = all_embds.to(self.device)
+        all_embds = torch.from_numpy(np.concatenate(embds, axis=0)).to(self.device)
         # tokenize the query
         query_tokenized = clip.tokenize([query]).to(self.device)
         with torch.no_grad():
             encoded_query  = self.model.encode_text(query_tokenized)
             encoded_query /= encoded_query.norm(dim=-1, keepdim=True)
 
-        self.logger.debug("Encoded query shape: %s", encoded_query.shape)
-
-        sims = (all_embds @ encoded_query.T).cpu().numpy().ravel()
+        self.logger.debug("Encoded query shape: %s", all_embds.dtype)
+        with torch.autocast(device_type=self.device, dtype=torch.float32):
+            sims = (all_embds @ encoded_query.T).cpu().numpy().ravel()
         self.logger.debug("Sims shape: %s", sims.shape)
         max_sim = sims.max()
         keep = (sims >=  self.threshold) & (sims >= max_sim - 0.03)
