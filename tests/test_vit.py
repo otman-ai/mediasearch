@@ -18,11 +18,12 @@ def test_search_images(timer):
 
 
     image_search = ImageQuery(**config)
+    images = ["assets/frame.jpg", "assets/frame1.jpg", "assets/frame2.JPG"]
 
     with timer("insert_images"):
-        image_search.insert_images(images=["assets/frame.jpg", "assets/frame2.JPG"])
+        image_search.insert_images(images=images)
 
-    solution =  {'assets/frame.jpg': 0.26540300250053406, 'assets/frame2.JPG': 0.2592819333076477}
+    solution =  {'assets/frame.jpg': 0.26540297269821167, 'assets/frame2.JPG': 0.2592819333076477}
 
     with timer("search"):
         results = image_search.search("buggy")
@@ -61,7 +62,7 @@ def test_search_videos(timer):
     with timer("insert_videos"):
         video_search.insert_videos(videos_path=videos)
 
-    solution = {'assets/video0.mp4': [(0.0, 1.0, 0.26996269822120667), (1.0, 2.0, 0.27478668093681335), (2.0, 3.0, 0.27111056447029114), (6.0, 7.0, 0.25131896138191223), (8.0, 9.0, 0.2641167938709259), (9.0, 10.0, 0.2679166793823242), (10.0, 11.0, 0.25460973381996155), (11.0, 12.0, 0.25499865412712097), (12.0, 12.666666666666666, 0.27470797300338745)], 'assets/video2.mp4': [(0.0, 1.0, 0.2557556927204132)]}
+    solution = {'assets/video0.mp4': [(0.0, 1.0, 0.26996272802352905), (1.0, 2.0, 0.27478668093681335), (2.0, 3.0, 0.2711105942726135), (6.0, 7.0, 0.2513189911842346), (8.0, 9.0, 0.2641167938709259), (9.0, 10.0, 0.2679167091846466), (10.0, 11.0, 0.25460970401763916), (11.0, 12.0, 0.25499865412712097), (12.0, 12.666666666666666, 0.27470794320106506)], 'assets/video2.mp4': [(0.0, 1.0, 0.2557557225227356)]}
     with timer("search"):
         results = video_search.search(query)
 

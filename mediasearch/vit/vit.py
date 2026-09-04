@@ -143,19 +143,11 @@ class VideoQuery:
             logging.info(f"The embeddings saved to {self.cash}")
 
     def search(self, query: str) -> dict | None:
-        timestamps_extracted = {}
         logging.info("Tokenizing the query...")
-        # tokenize the query
-        query_tokenized = clip.tokenize([query]).to(self.device)
-        with torch.no_grad():
-            encoded_query  = self.model.encode_text(query_tokenized)
-            encoded_query /= encoded_query.norm(dim=-1, keepdim=True)
-            encoded_query = encoded_query.cpu().numpy().T
-        self.logger.debug("Encoded query shape: %s", encoded_query.shape)
+
         if not os.path.exists(self.cash) and os.path.getsize(self.cash) == 0:
             self.logger.warning("The embeddings file is empty. Please insert videos first.")
             return
-        all_hits = []
         with h5py.File(self.cash, "r") as f:
             keys = list(f.keys())
             embds, meta = [], []
@@ -174,8 +166,18 @@ class VideoQuery:
 
                 # for i, s in enumerate(sims):
                 #     all_hits.append((video, i, float(s), float(rate_second), duration))
-        all_embds = np.concatenate(embds, axis=0)
-        sims = all_embds @ encoded_query
+        all_embds = torch.from_numpy(np.concatenate(embds, axis=0))
+        if self.device  == "cuda":
+            all_embds = all_embds.to(self.device)
+        # tokenize the query
+        query_tokenized = clip.tokenize([query]).to(self.device)
+        with torch.no_grad():
+            encoded_query  = self.model.encode_text(query_tokenized)
+            encoded_query /= encoded_query.norm(dim=-1, keepdim=True)
+
+        self.logger.debug("Encoded query shape: %s", encoded_query.shape)
+
+        sims = (all_embds @ encoded_query.T).cpu().numpy().ravel()
         self.logger.debug("Sims shape: %s", sims.shape)
         max_sim = sims.max()
         keep = (sims >=  self.threshold) & (sims >= max_sim - 0.03)
@@ -196,8 +198,9 @@ class VideoQuery:
 class ImageQuery:
     """How an image is related to a query"""
 
-    def __init__(self,  model_name:str="ViT-B/32", cash=image_embeddings_path, debug:bool=False, threshold:float=0.25, logger=logging.getLogger("mediasearch.vit")):
+    def __init__(self,  model_name:str="ViT-B/32", batch_size:int=32, cash=image_embeddings_path, debug:bool=False, threshold:float=0.25, logger=logging.getLogger("mediasearch.vit")):
         self.model_name = model_name
+        self.batch_size = batch_size
         self.cash = cash
         self.device =  "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load(self.model_name, device=self.device)
@@ -206,28 +209,53 @@ class ImageQuery:
         self.threshold = threshold
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
         
+    def _preprocess_frame(self, image):
+        img = Image.open(image).convert("RGB")
+        return self.preprocess(img)
+    
+    def _encode_image(self, img_features) -> torch.Tensor:
+        with torch.no_grad():
+            img_features = self.model.encode_image(img_features.to(self.device))
+            self.logger.debug("Image feature shape after encoding: %s", img_features.shape)
+            img_features /= img_features.norm(dim=-1, keepdim=True)
+            self.logger.debug("Image feature shape after normalization: %s", img_features.shape)
+        return img_features.cpu()
+
+    def _encode_batches(self, images, start):
+        batch = []
+        embeddings_batches = []
+        for idx, image in tqdm(enumerate(images,start=start)):
+            self.logger.info(f"Preprocessing the image {image} with index {idx}...")
+            if not os.path.isfile(image):
+                raise FileNotFoundError
+            
+            self.logger.info("Opening...")
+            img_features = self._preprocess_frame(image)
+            batch.append(img_features)
+            
+            if len(batch) == self.batch_size:
+                embeddings_batches.append(self._encode_image(torch.stack(batch)))
+                batch = []
+        if batch:
+            embeddings_batches.append(self._encode_image(torch.stack(batch)))
+        return torch.cat(embeddings_batches) if embeddings_batches else torch.empty(0)
+
+
     def insert_images(self, images:List=None):
         self.logger.info(f"Inserting {len(images)} images")
         with h5py.File(self.cash, "a") as f:
             groups = [key for key in f.keys() if isinstance(f[key], h5py.Group)]
             self.logger.debug("Images: %s", images)
-            for idx, image in tqdm(enumerate(images,start=len(groups))):
-                self.logger.info(f"Preprocessing the image {image} with index {idx}...")
-                if not os.path.isfile(image):
-                    raise FileNotFoundError
-                self.logger.info("Opening...")
-                img = Image.open(image).convert("RGB")
-                img_features = self.preprocess(img).unsqueeze(0)
-                with torch.no_grad():
-                    img_features = self.model.encode_image(img_features.to(self.device))
-                    self.logger.debug("Image feature shape after encoding: %s", img_features.shape)
-                    img_features /= img_features.norm(dim=-1, keepdim=True)
-                    self.logger.debug("Image feature shape after normalization: %s", img_features.shape)
-                self.logger.debug(f"Embeddings: {img_features.shape}")
+            start = len(groups)
+            embeddings_batches = self._encode_batches(images, start=start)
+            self.logger.debug(f"Embeddings: {embeddings_batches.shape}")
+            idx_batch = 0
+            for idx, image in tqdm(enumerate(images,start=start)):
                 grp = f.create_group(str(idx))
                 grp.create_dataset("image", data=[image])
-                grp.create_dataset("embeddings", data=np.asarray(img_features.cpu(), dtype=np.float32), compression="lzf")
+                grp.create_dataset("embeddings", data=np.asarray(embeddings_batches[idx_batch], dtype=np.float32), compression="lzf")
                 self.logger.debug(f"The embeddings for image {image} saved")
+                idx_batch += 1
         self.logger.info(f"The embeddings saved to {self.cash}")
 
 
