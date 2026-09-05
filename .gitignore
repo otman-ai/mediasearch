@@ -5,11 +5,14 @@ __pycache__/
 assets/video.mp4
 demo.py
 videos/
+mediasearch-api
+assets/video6.mp4
 # C extensions
 *.so
 testvenv/
 # Distribution / packaging
 .Python
+*.ipynb
 build/
 develop-eggs/
 dist/

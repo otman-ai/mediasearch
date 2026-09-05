@@ -142,7 +142,7 @@ class VideoQuery:
 
             logging.info(f"The embeddings saved to {self.cash}")
 
-    def search(self, query: str) -> dict | None:
+    def search(self, query: str, is_united_timestamp: bool=True) -> dict | None:
         logging.info("Tokenizing the query...")
 
         if not os.path.exists(self.cash) and os.path.getsize(self.cash) == 0:
@@ -190,7 +190,20 @@ class VideoQuery:
                     (float(a), float(b), float(c))
                     for a, b, c in zip(starts, ends, scores))
             offset += n
-        return out
+        if not is_united_timestamp:
+            return out
+        united_timestamps = {}
+        for key, value in out.items():
+            united_timestamps[key] = []
+            for idx, v in enumerate(value):
+                start, end, score = v
+                if int(start) == int(value[idx-1][1]):
+                    print("Video", video)
+                    united_timestamps[key][-1] = (united_timestamps[key][-1][0], end, score)
+                else:
+                    united_timestamps[key].append((start, end, score))
+                
+        return united_timestamps
     
 
 class ImageQuery:

@@ -49,7 +49,7 @@ video_search.insert_videos(videos_path=["path/to/video"]) # insert your videos
 results = video_search.search("the query is here") # then you can query 
 print("Results:", results)
 
-# Results : [(0, 2) (12.3, 16)]
+# Results :  {'assets/video6.mp4': [(567.4, 571.4000000000001, 0.25390625), (783.4000000000001, 790.6, 0.2509765625), (791.1, 791.3000000000001, 0.250732421875)]}
 ```
 
 * Search images by query
@@ -149,6 +149,8 @@ mediasearch censor video.mp4 censored_transcript.mp4 --labels faces license_plat
 ## Next
 - [X] Return the confident score & Sort the results from highest to lowest
 - [X] Optimize the embedding
-- [ ] Optimize Search latency
+- [X] Optimize Search latency
 - [ ] Test JEPA variations
 - [X] Add Cuda compatibility
+- [ ] Download large corpus of videos to test locally, note down the latency
+- [ ] Look for real use case and test it with it
