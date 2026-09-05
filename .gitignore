@@ -12,7 +12,6 @@ assets/video6.mp4
 testvenv/
 # Distribution / packaging
 .Python
-*.ipynb
 build/
 develop-eggs/
 dist/
