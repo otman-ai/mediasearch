@@ -47,6 +47,9 @@ setup(
         "openai-whisper @ git+https://github.com/openai/whisper.git@c0d2f624c09dc18e709e37c2ad90c039a4eb72a2",
     ],
     extras_require={
+        "app": [
+            "gradio>=4.0",
+        ],
         "dev": [
             "pytest>=6.0",
             "pytest-cov",
@@ -58,6 +61,7 @@ setup(
     entry_points={
         "console_scripts": [
             "mediasearch=mediasearch.cli:main",
+            "mediasearch-app=mediasearch.webapp:main",
         ],
     },
     include_package_data=True,

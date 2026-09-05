@@ -49,7 +49,13 @@ def main():
     censor_parser.add_argument("input_path", help="Path to input file")
     censor_parser.add_argument("output_path", help="Path to output file")
     censor_parser.add_argument("--labels", nargs="+", default=["faces"], help="Objects to censor")
-    
+
+    # Gradio web app command
+    app_parser = subparsers.add_parser("app", help="Launch the Gradio web UI")
+    app_parser.add_argument("--host", default=os.getenv("MEDIASEARCH_HOST", "127.0.0.1"), help="Server host")
+    app_parser.add_argument("--port", type=int, default=int(os.getenv("MEDIASEARCH_PORT", "7860")), help="Server port")
+    app_parser.add_argument("--share", action="store_true", help="Create a public Gradio share link")
+
     args = parser.parse_args()
     
     if not args.command:
@@ -104,6 +110,14 @@ def main():
             result = image_search.search(args.query)
             print("Results:",result)
             
+        elif args.command == "app":
+            from .webapp import build_app
+            build_app().queue().launch(
+                server_name=args.host,
+                server_port=args.port,
+                share=args.share,
+            )
+
         elif args.command == "censor":
             from .edit import CensorObjects
             censor_obj = CensorObjects(labels=args.labels)

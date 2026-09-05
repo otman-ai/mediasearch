@@ -43,6 +43,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+app = [
+    "gradio>=4.0",
+]
 dev = [
     "pytest>=6.0",
     "pytest-cov",
@@ -58,6 +61,7 @@ Issues = "https://github.com/otman-ai/mediasearch/issues"
 
 [project.scripts]
 mediasearch = "mediasearch.cli:main"
+mediasearch-app = "mediasearch.webapp:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "mediasearch.__version__"}

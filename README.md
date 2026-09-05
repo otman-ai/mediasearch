@@ -142,6 +142,27 @@ mediasearch search-videos "person walking" --threshold 0.05
 # Censor objects
 mediasearch censor video.mp4 censored_transcript.mp4 --labels faces license_plates
 ```
+
+### Web app (Gradio)
+
+A browser UI for video/image search, indexing, object censoring and the basic
+video edits.
+
+```bash
+pip install "mediasearch[app]"
+
+# then launch it with either command:
+mediasearch app                       # http://127.0.0.1:7860
+mediasearch-app
+
+# options
+mediasearch app --host 0.0.0.0 --port 8000 --share
+```
+
+Configuration via environment variables: `MEDIASEARCH_MODEL`, `MEDIASEARCH_FRAME_RATE`,
+`MEDIASEARCH_THRESHOLD`, `MEDIASEARCH_VIDEO_CASH`, `MEDIASEARCH_IMAGE_CASH`,
+`MEDIASEARCH_HOST`, `MEDIASEARCH_PORT`, `MEDIASEARCH_SHARE`.
+
 ## License
 [License](/LICENSE)
 
