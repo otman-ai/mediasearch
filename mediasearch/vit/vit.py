@@ -193,12 +193,14 @@ class VideoQuery:
         if not is_united_timestamp:
             return out
         united_timestamps = {}
+        # if not out.items():
+        #     self.logger.warning("No timestamps found for the query: %s", query)
+        #     return united_timestamps
         for key, value in out.items():
             united_timestamps[key] = []
             for idx, v in enumerate(value):
                 start, end, score = v
-                if int(start) == int(value[idx-1][1]):
-                    print("Video", video)
+                if int(start) == int(value[idx-1][1]) and idx != 0:
                     united_timestamps[key][-1] = (united_timestamps[key][-1][0], end, score)
                 else:
                     united_timestamps[key].append((start, end, score))
